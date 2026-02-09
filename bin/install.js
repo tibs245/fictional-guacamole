@@ -13,6 +13,10 @@ const SECTIONS = {
     name: 'Project Structure',
     description: 'Page architecture, components/hooks organization, testing strategy',
   },
+  'monorepo-workflow': {
+    name: 'Monorepo Workflow',
+    description: 'Lint, build, and validation commands for modules',
+  },
 };
 
 const IDES = {

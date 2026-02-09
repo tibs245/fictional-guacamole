@@ -45,9 +45,11 @@ async function install({ targetDir, sectionDir, sectionName }) {
 
   // Read section config for globs (default: no glob)
   const sectionConfigFile = path.join(sectionDir, 'section.json');
-  const sectionGlobs = fs.existsSync(sectionConfigFile)
-    ? JSON.parse(fs.readFileSync(sectionConfigFile, 'utf-8')).globs
-    : undefined;
+  const sectionConfig = fs.existsSync(sectionConfigFile)
+    ? JSON.parse(fs.readFileSync(sectionConfigFile, 'utf-8'))
+    : {};
+  const sectionGlobs = sectionConfig.globs;
+  const guideGlobs = sectionConfig.guideGlobs || {};
 
   // 1. Install the index as the only auto-attached rule
   const indexFile = path.join(sectionDir, '00-index.md');
@@ -85,16 +87,22 @@ async function install({ targetDir, sectionDir, sectionName }) {
       const titleMatch = guideContent.match(/^#\s+(.+)$/m);
       const title = titleMatch ? titleMatch[1] : guideFile.replace('.md', '');
 
-      const ruleName = `${sectionName}-${guideFile.replace('.md', '')}.mdc`;
+      // Check if this guide has its own glob pattern (e.g., test files)
+      const guideKey = guideFile.replace('.md', '');
+      const guideGlob = guideGlobs[guideKey];
+
+      const ruleName = `${sectionName}-${guideKey}.mdc`;
       const ruleContent = toMdcRule({
         content: guideContent,
         description: `${sectionName} guide: ${title}`,
+        globs: guideGlob,
         alwaysApply: false,
       });
 
       const ruleFilePath = path.join(rulesDir, ruleName);
       fs.writeFileSync(ruleFilePath, ruleContent);
-      console.log(`  ${green('✓')} ${dim('.cursor/rules/')}${ruleName}`);
+      const globInfo = guideGlob ? dim(` (auto-attached on ${guideGlob})`) : '';
+      console.log(`  ${green('✓')} ${dim('.cursor/rules/')}${ruleName}${globInfo}`);
     }
   }
 

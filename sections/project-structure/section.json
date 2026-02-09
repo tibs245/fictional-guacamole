@@ -1,3 +1,6 @@
 {
-  "globs": "src/pages/**, src/components/**, src/hooks/**"
+  "globs": "src/pages/**, src/components/**, src/hooks/**",
+  "guideGlobs": {
+    "04-test-utilities": "**/*.test.tsx, **/*.test.ts, **/*.spec.tsx, **/test-utils/**"
+  }
 }

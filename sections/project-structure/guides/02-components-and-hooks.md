@@ -137,6 +137,76 @@ If a component is page-specific but big, break it down with nested `_components/
 
 ---
 
+### Rule 6: Component spec files for reusable components and pages
+
+Reusable components (`src/components/`) and pages (`src/pages/**/Page.tsx`) get a `.spec.md` file maintained by the AI. This file acts as a **contract** — what the component does, not how.
+
+#### When to create a `.spec.md`
+
+| Scope | `.spec.md`? | Why |
+|-------|-------------|-----|
+| `src/components/**` | ✅ Yes | Reusable = needs a clear contract for consumers |
+| `src/pages/**/*.page.tsx` | ✅ Yes | Pages are orchestrators — documenting intent helps AI navigate |
+| `_components/` | ❌ No | Page-specific, context is obvious from the parent page |
+| `_hooks/` | ❌ No | Same — scoped to one page, code + tests are sufficient |
+
+#### File placement
+
+```
+src/components/CommonCells/ResourceStatusCell/
+├── ResourceStatusCell.component.tsx
+├── ResourceStatusCell.spec.md       ← component spec
+└── __tests__/
+    └── ResourceStatusCell.component.test.tsx
+```
+
+```
+src/pages/services/listing/
+├── Listing.page.tsx
+├── Listing.spec.md                  ← page spec
+├── Listing.spec.tsx                 ← integration test
+├── _components/
+└── _hooks/
+```
+
+#### What to include
+
+```markdown
+# ResourceStatusCell
+
+- **Type**: Reusable component
+- **Purpose**: Displays a colored badge for a resource's operational status.
+- **Autonomy**: Stateless — all data comes from props, no internal queries.
+- **Props**: `status: ResourceStatus` (generic enum, not entity-specific)
+- **Expected behavior**:
+  - Maps each status to a color via `getResourceStatusColor()`
+  - Renders an ODS Badge with the status label
+  - Handles unknown statuses gracefully (fallback to grey)
+```
+
+```markdown
+# Services Listing Page
+
+- **Type**: Page (thin orchestrator)
+- **Purpose**: Displays a paginated datagrid of VSPC tenants with name, location, region, reference, and status.
+- **Data sources**: `useVspcTenants()` (query), `useVspcTenantListingColumns()` (columns)
+- **Routing**: `/services` — main entry point after login
+- **Expected behavior**:
+  - Shows loading skeleton while data is fetching
+  - Displays error state if API fails
+  - Each row links to the tenant dashboard
+  - Columns are sortable
+```
+
+#### AI maintenance rules
+
+- The AI **creates** the `.spec.md` when generating a new reusable component or page.
+- The AI **updates** the `.spec.md` when modifying the component's contract (new props, changed behavior).
+- The AI **reads** the `.spec.md` before modifying a component to understand intent.
+- The `.spec.md` is never a substitute for tests — it documents intent, tests verify implementation.
+
+---
+
 ## Organization patterns
 
 ### Reusable components — group by category

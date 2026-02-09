@@ -19,9 +19,22 @@ async function install({ targetDir, sectionDir, sectionName }) {
 
   // Read section config for globs (default: src/**)
   const sectionConfigFile = path.join(sectionDir, 'section.json');
-  const sectionGlobs = fs.existsSync(sectionConfigFile)
-    ? JSON.parse(fs.readFileSync(sectionConfigFile, 'utf-8')).globs
-    : 'src/**';
+  const sectionConfig = fs.existsSync(sectionConfigFile)
+    ? JSON.parse(fs.readFileSync(sectionConfigFile, 'utf-8'))
+    : {};
+  const sectionGlobs = sectionConfig.globs || 'src/**';
+  const guideGlobs = sectionConfig.guideGlobs || {};
+
+  // Merge all globs (section + per-guide) for Copilot's applyTo
+  const allGlobs = new Set(
+    sectionGlobs.split(',').map((g) => g.trim()),
+  );
+  for (const extraGlob of Object.values(guideGlobs)) {
+    for (const g of extraGlob.split(',').map((s) => s.trim())) {
+      allGlobs.add(g);
+    }
+  }
+  const combinedGlobs = [...allGlobs].join(', ');
 
   // 1. Install guides as a scoped instruction file
   const guidesDir = path.join(sectionDir, 'guides');
@@ -42,7 +55,7 @@ async function install({ targetDir, sectionDir, sectionName }) {
 
     const fileContent = [
       '---',
-      `applyTo: "${sectionGlobs}"`,
+      `applyTo: "${combinedGlobs}"`,
       '---',
       '',
       indexContent,
@@ -77,7 +90,7 @@ async function install({ targetDir, sectionDir, sectionName }) {
 
       const fileContent = [
         '---',
-        `applyTo: "${sectionGlobs}"`,
+        `applyTo: "${combinedGlobs}"`,
         '---',
         '',
         agentContent,
@@ -104,7 +117,7 @@ async function install({ targetDir, sectionDir, sectionName }) {
 
     const fileContent = [
       '---',
-      `applyTo: "${sectionGlobs}"`,
+      `applyTo: "${combinedGlobs}"`,
       '---',
       '',
       decisionsContent,

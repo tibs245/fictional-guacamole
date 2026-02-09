@@ -8,15 +8,28 @@
 
 A page file (`.page.tsx`) orchestrates data and layout. It should not contain complex logic, large JSX trees, or inline business rules. Delegate to `_components/` and `_hooks/`.
 
+When a page depends on data loading, use the **Shell + Content pattern** (see Rule 7): the `.page.tsx` file owns the Suspense and ErrorBoundary, while the `.content.tsx` file contains the business logic with guaranteed data.
+
 #### Correct
 
 ```tsx
-// src/pages/services/listing/Listing.page.tsx
+// src/pages/services/listing/Listing.page.tsx — Shell
 function ServiceListingPage() {
-  const { data: tenants, isLoading } = useVSPCTenants();
-  const columns = useVspcTenantListingColumns();
+  return (
+    <ErrorBoundary fallbackRender={({ error }) => <ErrorFallback error={error} />}>
+      <Suspense fallback={<ListingSkeleton />}>
+        <ListingContent />
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
+```
 
-  if (isLoading) return <Loading />;
+```tsx
+// src/pages/services/listing/Listing.content.tsx — Content
+function ListingContent() {
+  const { data: tenants } = useSuspenseQuery(tenantsQueryOptions());
+  const columns = useVspcTenantListingColumns();
 
   return <Datagrid items={tenants} columns={columns} />;
 }
@@ -49,6 +62,23 @@ function ServiceListingPage() {
   ], []);
 
   return <Datagrid items={tenants} columns={columns} />;
+}
+```
+
+```tsx
+// ❌ Page that mixes loading/error/content in a single component
+function EditConfigurationPage() {
+  const { data, isLoading, error, isSuccess } = useQuery(...);
+
+  return (
+    <Drawer>
+      {isLoading && <OdsSpinner />}
+      {!!error && <ErrorBoundary ... />}
+      {isSuccess && (
+        // 80+ lines of form content buried under conditions
+      )}
+    </Drawer>
+  );
 }
 ```
 
@@ -182,11 +212,164 @@ Delete confirmations, creation forms, and other modals are nested routes rendere
 
 ---
 
+### Rule 7: Suspense boundary pattern for data-dependent pages and components
+
+When a page or component is **entirely dependent on data loading**, split it into a Shell and a Content. The Shell owns the Suspense + ErrorBoundary, the Content owns the business logic with `useSuspenseQuery`.
+
+This pattern applies at **two levels**:
+- **Pages**: `*.page.tsx` (Shell) + `*.content.tsx` (Content)
+- **Components**: `*.component.tsx` (Shell) + `*.content.tsx` (Content)
+
+Each component managing its own boundary means **independent loading and error states** — one failing component doesn't break its siblings.
+
+> **Decision record**: See [D-01-suspense-boundary-pattern](../decisions/D-01-suspense-boundary-pattern.md) for the full rationale, alternatives considered, and trade-offs.
+
+#### File structure — page level
+
+```
+src/pages/services/listing/
+├── Listing.page.tsx            ← Shell: Suspense + ErrorBoundary
+├── Listing.content.tsx         ← Content: useSuspenseQuery + business logic
+├── Listing.spec.tsx            ← Integration test
+├── _components/
+└── _hooks/
+```
+
+#### File structure — component level
+
+```
+src/components/CommonTiles/GeneralInformationTile/
+├── GeneralInformationTile.component.tsx   ← Shell: Suspense + ErrorBoundary
+├── GeneralInformationTile.content.tsx     ← Content: useSuspenseQuery + render
+└── __tests__/
+    └── GeneralInformationTile.content.test.tsx
+```
+
+#### Shell — owns the boundaries
+
+The Shell is small and formulaic. It chooses:
+- **What to show during loading** — a Skeleton layout, a Spinner, or `null`
+- **What to show on error** — always custom, specific to the page/component context
+
+```tsx
+// Listing.page.tsx
+import { Suspense } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
+import { ListingContent } from './Listing.content';
+import { ListingSkeleton } from './_components/ListingSkeleton.component';
+
+export default function ListingPage() {
+  return (
+    <ErrorBoundary fallbackRender={({ error, resetErrorBoundary }) => (
+      <ListingError error={error} onRetry={resetErrorBoundary} />
+    )}>
+      <Suspense fallback={<ListingSkeleton />}>
+        <ListingContent />
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
+```
+
+For pages, the `ErrorBoundary` from `@ovh-ux/manager-react-components` can also be used when appropriate (it integrates with React Router navigation and the shell).
+
+#### Content — owns the business logic
+
+The Content uses `useSuspenseQuery` — `data` is **always defined**, never `undefined`. No loading/error handling here. Pure business logic.
+
+```tsx
+// Listing.content.tsx
+import { useSuspenseQuery } from '@tanstack/react-query';
+import { vspcTenantsQueryOptions } from '@/data/queryOptions/tenants';
+import { useTenantListingColumns } from './_hooks/useVspcTenantListingColumns';
+
+export function ListingContent() {
+  const { data: tenants } = useSuspenseQuery(vspcTenantsQueryOptions());
+  const columns = useTenantListingColumns();
+
+  return (
+    <section className="flex flex-col gap-8">
+      <Datagrid
+        columns={columns}
+        items={tenants}
+        totalItems={tenants.length}
+      />
+    </section>
+  );
+}
+```
+
+#### Component-level example
+
+A reusable tile that fetches its own data:
+
+```tsx
+// GeneralInformationTile.component.tsx — Shell
+export function GeneralInformationTile({ vaultId }: { vaultId: string }) {
+  return (
+    <ErrorBoundary fallbackRender={({ error }) => (
+      <TileError title="General Information" error={error} />
+    )}>
+      <Suspense fallback={<TileSkeleton rows={4} />}>
+        <GeneralInformationTileContent vaultId={vaultId} />
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
+```
+
+```tsx
+// GeneralInformationTile.content.tsx — Content
+export function GeneralInformationTileContent({ vaultId }: { vaultId: string }) {
+  const { data: vault } = useSuspenseQuery(vaultDetailsQueryOptions(vaultId));
+  const { data: location } = useSuspenseQuery(locationQueryOptions(vault.region));
+
+  return (
+    <DashboardTile title="General Information">
+      <TileRow label="Name">{vault.name}</TileRow>
+      <TileRow label="Region">{location.label}</TileRow>
+      <TileRow label="Status"><StatusBadge status={vault.status} /></TileRow>
+    </DashboardTile>
+  );
+}
+```
+
+Because each component has its own boundary, a dashboard page becomes a composition of independent zones:
+
+```tsx
+// VaultDashboard.page.tsx
+export default function VaultDashboardPage() {
+  const { vaultId } = useRequiredParams('vaultId');
+
+  return (
+    <BaseLayout header={...}>
+      <div className="grid grid-cols-2 gap-4">
+        <GeneralInformationTile vaultId={vaultId} />   {/* own boundary */}
+        <SubscriptionTile vaultId={vaultId} />          {/* own boundary */}
+        <BucketsTile vaultId={vaultId} />               {/* own boundary */}
+      </div>
+    </BaseLayout>
+  );
+}
+```
+
+No need for boundaries in the page itself — each tile manages its own loading and error states.
+
+#### When NOT to use this pattern
+
+- **Components with static + dynamic content** — If the component has meaningful static content that should be visible during loading (e.g., a form with static labels + dynamic default values), use `useQuery` and handle loading inline.
+- **Optional data** — If the data is a nice-to-have enhancement, not a requirement for rendering, `useQuery` with fallback values is simpler.
+
+---
+
 ## File naming conventions
 
 | Element | Extension | Example |
 |---------|-----------|---------|
-| Page | `.page.tsx` | `Listing.page.tsx` |
+| Page (Shell) | `.page.tsx` | `Listing.page.tsx` |
+| Page content | `.content.tsx` | `Listing.content.tsx` |
+| Component (Shell) | `.component.tsx` | `GeneralInformationTile.component.tsx` |
+| Component content | `.content.tsx` | `GeneralInformationTile.content.tsx` |
 | Page-specific component | `.component.tsx` | `TenantNameCell.component.tsx` |
 | Page-specific hook | `.tsx` or `.hooks.tsx` | `useVspcTenantListingColumns.tsx` |
 | Integration test (page) | `.spec.tsx` | `Listing.spec.tsx` |

@@ -179,3 +179,5 @@ function ProductDetail({ id }: { id: string | undefined }) {
 ---
 
 > Decision rationale: [D-05 — useSuspenseQuery default vs useQuery default](../decisions/D-05-suspense-vs-usequery.md)
+>
+> Architecture pattern: For file structure (Shell + Content split), see `project-structure` guide 01-page-architecture, Rule 7.

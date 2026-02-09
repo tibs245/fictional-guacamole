@@ -61,31 +61,11 @@ it('filters products', async () => {
 
 For unit tests of page components, seed the `QueryClient` cache with `setQueryData` before rendering. This is declarative, scales to any number of queries, and exercises the full React Query pipeline (cache → select → component) without network calls.
 
-#### Setup — test utilities
+#### Setup
 
-```tsx
-// src/test-utils/query.ts
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
+Use the test wrapper builder from `test-utils/` (see `project-structure` guide 04-test-utilities for the full builder pattern, Rules 1 and 3).
 
-export const createTestQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
-
-export const createWrapper = (queryClient: QueryClient) => {
-  const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
-  );
-  return Wrapper;
-};
-```
+Key: always create a `QueryClient` with `retry: false` and seed the cache with `setQueryData` before rendering.
 
 #### Correct — page with multiple queries
 

@@ -51,6 +51,11 @@ The question: which should be the default recommendation for new code?
 - [React docs — Suspense for Data Fetching](https://react.dev/reference/react/Suspense)
 - [TkDodo — Practical React Query](https://tkdodo.eu/blog/practical-react-query)
 
+## Related decisions
+
+- [project-structure / D-01 — Suspense Boundary Pattern](../../project-structure/decisions/D-01-suspense-boundary-pattern.md): Documents the Shell + Content file split pattern that implements this decision in practice. When adopting `useSuspenseQuery`, the component architecture follows the Shell (`.page.tsx` / `.component.tsx`) + Content (`.content.tsx`) pattern.
+
 ## History
 
 - 2026-02-06: Created
+- 2026-02-09: Added cross-reference to project-structure D-01 (Shell + Content pattern)
