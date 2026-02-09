@@ -46,7 +46,16 @@
 
 "Should I use useSuspenseQuery or useQuery?"
   → 01-page-architecture (Rule 7) + D-01 decision record
+
+"I need to refactor a module to use Suspense boundaries"
+  → Agent: refactor-suspense-boundary
 ```
+
+## Agents
+
+| File | Use when you need to... |
+|------|------------------------|
+| [refactor-suspense-boundary](./agents/refactor-suspense-boundary.md) | Migrate pages/components to the Shell + Content Suspense pattern |
 
 ## Decisions
 
