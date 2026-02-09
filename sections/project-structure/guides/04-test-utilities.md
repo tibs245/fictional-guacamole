@@ -140,7 +140,7 @@ render(<Providers><TestApp initialRoute="/services" /></Providers>);
 
 The builder collects provider configuration, then `build()` assembles them using `reduceRight` — first provider added becomes the outermost wrapper. Each `add*Provider` function pushes a React component into the providers array.
 
-Key: `.withQueryClient()` creates a `new QueryClient` with `retry: false` for both queries and mutations — tests should fail fast, not retry.
+Key: `.withQueryClient()` creates a `new QueryClient` with `retry: false` and `staleTime: Infinity` — tests should fail fast (no retry) and never trigger background refetches on seeded data.
 
 > **Reference implementation**:
 > `modules/backup-agent/src/test-utils/testWrapperBuilder.tsx`
@@ -150,13 +150,15 @@ Key: `.withQueryClient()` creates a `new QueryClient` with `retry: false` for bo
 
 For Content components using `useSuspenseQuery` (Shell + Content pattern), you need to pre-seed the cache so the component receives guaranteed data without a real API call.
 
+**Critical**: `staleTime: Infinity` is required. Without it, `staleTime` defaults to `0` — data seeded with `setQueryData` is immediately stale, and `useSuspenseQuery` will trigger a real `queryFn` call on mount, defeating the purpose of pre-seeding.
+
 **Current limitation**: `.withQueryClient()` creates the QueryClient internally and doesn't accept an external one. Until the builder is extended (see evolution below), mount the `QueryClientProvider` manually:
 
 ```tsx
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } },
 });
 
 // Seed the cache before rendering
@@ -187,7 +189,7 @@ To support `setQueryData` via the builder, apply this change to `testWrapperProv
 +  externalClient?: QueryClient,
 +) => {
 +  const queryClient = externalClient ?? new QueryClient({
-     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+     defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } },
    });
 ```
 
@@ -218,7 +220,7 @@ const wrapper = await testWrapperBuilder().withQueryClient().build();
 
 // With pre-seeding — pass your own QueryClient
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } },
 });
 queryClient.setQueryData(queryKey, mockData);
 const wrapper = await testWrapperBuilder().withQueryClient(queryClient).build();

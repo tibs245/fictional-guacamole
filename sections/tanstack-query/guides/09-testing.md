@@ -65,7 +65,7 @@ For unit tests of page components, seed the `QueryClient` cache with `setQueryDa
 
 Use the test wrapper builder from `test-utils/` (see `project-structure` guide 04-test-utilities for the full builder pattern, Rules 1 and 3).
 
-Key: always create a `QueryClient` with `retry: false` and seed the cache with `setQueryData` before rendering.
+Key: always create a `QueryClient` with `retry: false` and `staleTime: Infinity`, then seed the cache with `setQueryData` before rendering. Without `staleTime: Infinity`, seeded data is immediately stale and `useSuspenseQuery` will trigger a real `queryFn` call on mount.
 
 #### Correct — page with multiple queries
 
@@ -84,7 +84,7 @@ import { DashboardPage } from './DashboardPage';
 describe('DashboardPage', () => {
   it('renders user info, orders, and notifications', () => {
     const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } },
     });
 
     // Seed each query independently — order doesn't matter
