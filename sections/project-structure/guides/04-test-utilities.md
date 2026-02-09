@@ -17,6 +17,7 @@ src/test-utils/
 │   ├── react-router-dom.tsx   ← Router hooks and Link
 │   └── react-i18next.tsx      ← Translation hook
 ├── globalMocks.ts             ← vi.hoisted() global mocks
+├── createQueryClientTest.ts   ← Test QueryClient factory
 ├── testWrapperBuilder.tsx      ← Builder pattern for providers
 ├── testWrapperProviders.tsx    ← Provider factory functions
 ├── setupMsw.ts                ← MSW handler aggregation
@@ -108,7 +109,71 @@ describe('MyComponent', () => {
 
 ---
 
-### Rule 3: Test wrapper builder for provider composition
+### Rule 3: `createQueryClientTest()` — single factory for test QueryClient
+
+All tests use `createQueryClientTest()` to create a QueryClient with the correct test defaults. Never instantiate `new QueryClient()` directly in test files — always go through this factory.
+
+#### Implementation
+
+```tsx
+// src/test-utils/createQueryClientTest.ts
+import { QueryClient } from '@tanstack/react-query';
+
+export const createQueryClientTest = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, staleTime: Infinity },
+      mutations: { retry: false },
+    },
+  });
+```
+
+#### Why these defaults
+
+| Option | Value | Reason |
+|--------|-------|--------|
+| `retry` | `false` | Tests should fail fast, not retry silently |
+| `staleTime` | `Infinity` | Data seeded with `setQueryData` stays fresh — no background refetch, no `queryFn` call on mount |
+
+**Without `staleTime: Infinity`**, `staleTime` defaults to `0` — seeded data is immediately stale, and `useSuspenseQuery` triggers a real `queryFn` call on mount, defeating the purpose of pre-seeding.
+
+#### Usage — everywhere
+
+```tsx
+// In the builder (testWrapperProviders.tsx)
+import { createQueryClientTest } from './createQueryClientTest';
+
+export const addQueryClientProvider = (
+  providers: TestProvider[],
+  queryClient?: QueryClient,
+) => {
+  const client = queryClient ?? createQueryClientTest();
+  providers.push(({ children }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  ));
+};
+```
+
+```tsx
+// In unit tests with setQueryData
+import { createQueryClientTest } from '@/test-utils/createQueryClientTest';
+
+const queryClient = createQueryClientTest();
+queryClient.setQueryData(productQueries.detail(productId).queryKey, mockProduct);
+```
+
+```tsx
+// In renderTest (Test.utils.tsx)
+const Providers = await testWrapperBuilder()
+  .withQueryClient()  // uses createQueryClientTest() internally
+  .build();
+```
+
+One source of truth for test QueryClient config — no risk of forgetting `staleTime: Infinity` in one test file.
+
+---
+
+### Rule 4: Test wrapper builder for provider composition
 
 Tests needing React context providers use a **fluent builder pattern**. Each provider is opt-in — compose only what the test requires.
 
@@ -140,7 +205,7 @@ render(<Providers><TestApp initialRoute="/services" /></Providers>);
 
 The builder collects provider configuration, then `build()` assembles them using `reduceRight` — first provider added becomes the outermost wrapper. Each `add*Provider` function pushes a React component into the providers array.
 
-Key: `.withQueryClient()` creates a `new QueryClient` with `retry: false` and `staleTime: Infinity` — tests should fail fast (no retry) and never trigger background refetches on seeded data.
+`.withQueryClient()` accepts an optional `QueryClient` — if none is provided, it calls `createQueryClientTest()` internally.
 
 > **Reference implementation**:
 > `modules/backup-agent/src/test-utils/testWrapperBuilder.tsx`
@@ -148,18 +213,13 @@ Key: `.withQueryClient()` creates a `new QueryClient` with `retry: false` and `s
 
 #### Pre-seeding QueryClient cache with `setQueryData`
 
-For Content components using `useSuspenseQuery` (Shell + Content pattern), you need to pre-seed the cache so the component receives guaranteed data without a real API call.
-
-**Critical**: `staleTime: Infinity` is required. Without it, `staleTime` defaults to `0` — data seeded with `setQueryData` is immediately stale, and `useSuspenseQuery` will trigger a real `queryFn` call on mount, defeating the purpose of pre-seeding.
-
-**Current limitation**: `.withQueryClient()` creates the QueryClient internally and doesn't accept an external one. Until the builder is extended (see evolution below), mount the `QueryClientProvider` manually:
+For Content components using `useSuspenseQuery` (Shell + Content pattern), pre-seed the cache so the component receives guaranteed data without a real API call.
 
 ```tsx
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { createQueryClientTest } from '@/test-utils/createQueryClientTest';
 
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } },
-});
+const queryClient = createQueryClientTest();
 
 // Seed the cache before rendering
 queryClient.setQueryData(
@@ -167,7 +227,17 @@ queryClient.setQueryData(
   mockProductData,
 );
 
-// Mount QueryClientProvider manually
+// Option A — pass to the builder
+const wrapper = await testWrapperBuilder()
+  .withQueryClient(queryClient)
+  .withI18next()
+  .build();
+
+render(<MyContent />, { wrapper });
+```
+
+```tsx
+// Option B — mount QueryClientProvider manually (if builder not yet extended)
 render(
   <QueryClientProvider client={queryClient}>
     <MyContent />
@@ -184,13 +254,18 @@ To support `setQueryData` via the builder, apply this change to `testWrapperProv
 ```diff
 -export const addQueryClientProvider = (providers: TestProvider[]) => {
 -  const queryClient = new QueryClient({
+-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+-  });
 +export const addQueryClientProvider = (
 +  providers: TestProvider[],
-+  externalClient?: QueryClient,
++  queryClient?: QueryClient,
 +) => {
-+  const queryClient = externalClient ?? new QueryClient({
-     defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } },
-   });
++  const client = queryClient ?? createQueryClientTest();
+   providers.push(({ children }) => (
+-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
++    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+   ));
+ };
 ```
 
 And in `testWrapperBuilder.tsx`:
@@ -212,23 +287,9 @@ And in `testWrapperBuilder.tsx`:
 +    if (config.withQueryClient) addQueryClientProvider(providers, config.queryClient);
 ```
 
-After this change, both patterns work:
-
-```tsx
-// Without pre-seeding — builder creates its own QueryClient
-const wrapper = await testWrapperBuilder().withQueryClient().build();
-
-// With pre-seeding — pass your own QueryClient
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } },
-});
-queryClient.setQueryData(queryKey, mockData);
-const wrapper = await testWrapperBuilder().withQueryClient(queryClient).build();
-```
-
 ---
 
-### Rule 4: MSW handlers power integration tests
+### Rule 5: MSW handlers power integration tests
 
 Each API domain exposes a `get*Mocks(params): Handler[]` factory. All factories are aggregated into a single `setupMswMock()` call.
 
@@ -293,6 +354,7 @@ export const renderTest = async ({
 test-utils/
 ├── mocks/                     ← Centralized: ODS → HTML, router, i18n
 ├── globalMocks.ts             ← vi.hoisted() for shared mocks
+├── createQueryClientTest.ts   ← Factory: QueryClient with retry: false + staleTime: Infinity
 ├── testWrapperBuilder.tsx      ← Fluent builder for providers
 ├── testWrapperProviders.tsx    ← Provider factory functions (reduceRight)
 ├── setupMsw.ts                ← MockParams + handler aggregation

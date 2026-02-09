@@ -65,14 +65,15 @@ For unit tests of page components, seed the `QueryClient` cache with `setQueryDa
 
 Use the test wrapper builder from `test-utils/` (see `project-structure` guide 04-test-utilities for the full builder pattern, Rules 1 and 3).
 
-Key: always create a `QueryClient` with `retry: false` and `staleTime: Infinity`, then seed the cache with `setQueryData` before rendering. Without `staleTime: Infinity`, seeded data is immediately stale and `useSuspenseQuery` will trigger a real `queryFn` call on mount.
+Always use `createQueryClientTest()` to create the test QueryClient — it sets `retry: false` and `staleTime: Infinity`. See `project-structure` guide 04-test-utilities, Rule 3 for the full implementation and rationale.
 
 #### Correct — page with multiple queries
 
 ```tsx
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { createQueryClientTest } from '@/test-utils/createQueryClientTest';
 import { userQueries } from '@/data/users.queries';
 import { orderQueries } from '@/data/orders.queries';
 import { notificationQueries } from '@/data/notifications.queries';
@@ -83,9 +84,7 @@ import { DashboardPage } from './DashboardPage';
 
 describe('DashboardPage', () => {
   it('renders user info, orders, and notifications', () => {
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } },
-    });
+    const queryClient = createQueryClientTest();
 
     // Seed each query independently — order doesn't matter
     queryClient.setQueryData(userQueries.detail('user-1').queryKey, mockUser);
@@ -131,7 +130,7 @@ vi.mocked(useQuery)
 
 - **Testing loading states**: `setQueryData` makes data available immediately — no loading state. If you need to test a loading state, don't seed that specific query. The component will see `isPending: true` for the unseeded query.
 - **Testing error states**: Use `queryClient.setQueryDefaults(queryKey, { queryFn: () => Promise.reject(new Error('fail')) })` then let the query fire, or use MSW for integration tests.
-- **Fresh QueryClient per test**: Always create a new `QueryClient` in each test to prevent cache leaks between tests. Never share a `QueryClient` across tests.
+- **Fresh QueryClient per test**: Always call `createQueryClientTest()` in each test to prevent cache leaks between tests. Never share a `QueryClient` across tests.
 
 ---
 
