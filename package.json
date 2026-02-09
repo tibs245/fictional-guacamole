@@ -1,0 +1,25 @@
+{
+  "name": "@ovh-ux/ai-rules",
+  "version": "0.1.0",
+  "description": "AI rules, guides, and agents for OVHcloud Manager development",
+  "bin": {
+    "ai-rules": "./bin/install.js"
+  },
+  "files": [
+    "bin/",
+    "sections/",
+    "installers/"
+  ],
+  "keywords": [
+    "tanstack-query",
+    "react-query",
+    "cursor",
+    "copilot",
+    "ai-rules",
+    "ovhcloud"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
