@@ -1,0 +1,3 @@
+{
+  "globs": "src/pages/**, src/components/**, src/hooks/**"
+}

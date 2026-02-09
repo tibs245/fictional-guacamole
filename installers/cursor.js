@@ -43,6 +43,12 @@ async function install({ targetDir, sectionDir, sectionName }) {
   const rulesDir = path.join(targetDir, '.cursor', 'rules');
   fs.mkdirSync(rulesDir, { recursive: true });
 
+  // Read section config for globs (default: no glob)
+  const sectionConfigFile = path.join(sectionDir, 'section.json');
+  const sectionGlobs = fs.existsSync(sectionConfigFile)
+    ? JSON.parse(fs.readFileSync(sectionConfigFile, 'utf-8')).globs
+    : undefined;
+
   // 1. Install the index as the only auto-attached rule
   const indexFile = path.join(sectionDir, '00-index.md');
   if (fs.existsSync(indexFile)) {
@@ -52,13 +58,13 @@ async function install({ targetDir, sectionDir, sectionName }) {
     const ruleContent = toMdcRule({
       content: rewrittenIndex,
       description: `${sectionName} — index and routing table. Read this FIRST to find which guide to load.`,
-      globs: 'src/data/**',
+      globs: sectionGlobs,
       alwaysApply: false,
     });
 
     const ruleFile = path.join(rulesDir, `${sectionName}-index.mdc`);
     fs.writeFileSync(ruleFile, ruleContent);
-    console.log(`  ${green('✓')} ${dim('.cursor/rules/')}${sectionName}-index.mdc ${dim('(auto-attached on src/data/**)')}`);
+    console.log(`  ${green('✓')} ${dim('.cursor/rules/')}${sectionName}-index.mdc ${dim(`(auto-attached on ${sectionGlobs || 'manual'})`)}`);
   }
 
   // 2. Install each guide as its own rule (no glob — AI picks via description)

@@ -17,7 +17,13 @@ async function install({ targetDir, sectionDir, sectionName }) {
   const instructionsDir = path.join(targetDir, '.github', 'instructions');
   fs.mkdirSync(instructionsDir, { recursive: true });
 
-  // 1. Install guides as a scoped instruction file (attached to src/data/**)
+  // Read section config for globs (default: src/**)
+  const sectionConfigFile = path.join(sectionDir, 'section.json');
+  const sectionGlobs = fs.existsSync(sectionConfigFile)
+    ? JSON.parse(fs.readFileSync(sectionConfigFile, 'utf-8')).globs
+    : 'src/**';
+
+  // 1. Install guides as a scoped instruction file
   const guidesDir = path.join(sectionDir, 'guides');
   if (fs.existsSync(guidesDir)) {
     const indexFile = path.join(sectionDir, '00-index.md');
@@ -36,7 +42,7 @@ async function install({ targetDir, sectionDir, sectionName }) {
 
     const fileContent = [
       '---',
-      'applyTo: "src/data/**"',
+      `applyTo: "${sectionGlobs}"`,
       '---',
       '',
       indexContent,
@@ -71,7 +77,7 @@ async function install({ targetDir, sectionDir, sectionName }) {
 
       const fileContent = [
         '---',
-        'applyTo: "src/data/**"',
+        `applyTo: "${sectionGlobs}"`,
         '---',
         '',
         agentContent,
@@ -98,7 +104,7 @@ async function install({ targetDir, sectionDir, sectionName }) {
 
     const fileContent = [
       '---',
-      'applyTo: "src/data/**"',
+      `applyTo: "${sectionGlobs}"`,
       '---',
       '',
       decisionsContent,

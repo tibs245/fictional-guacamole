@@ -9,6 +9,10 @@ const SECTIONS = {
     name: 'TanStack Query',
     description: 'Guides, decisions, and agents for TanStack Query v5',
   },
+  'project-structure': {
+    name: 'Project Structure',
+    description: 'Page architecture, components/hooks organization, testing strategy',
+  },
 };
 
 const IDES = {
