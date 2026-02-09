@@ -72,7 +72,7 @@ Key: always create a `QueryClient` with `retry: false` and seed the cache with `
 ```tsx
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { createTestQueryClient, createWrapper } from '@/test-utils/query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { userQueries } from '@/data/users.queries';
 import { orderQueries } from '@/data/orders.queries';
 import { notificationQueries } from '@/data/notifications.queries';
@@ -83,16 +83,20 @@ import { DashboardPage } from './DashboardPage';
 
 describe('DashboardPage', () => {
   it('renders user info, orders, and notifications', () => {
-    const queryClient = createTestQueryClient();
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
 
     // Seed each query independently — order doesn't matter
     queryClient.setQueryData(userQueries.detail('user-1').queryKey, mockUser);
     queryClient.setQueryData(orderQueries.byUser('org-1').queryKey, mockOrders);
     queryClient.setQueryData(notificationQueries.all().queryKey, mockNotifications);
 
-    render(<DashboardPage userId="user-1" />, {
-      wrapper: createWrapper(queryClient),
-    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DashboardPage userId="user-1" />
+      </QueryClientProvider>,
+    );
 
     expect(screen.getByText(mockUser.name)).toBeInTheDocument();
     expect(screen.getByText(`${mockOrders.length} orders`)).toBeInTheDocument();

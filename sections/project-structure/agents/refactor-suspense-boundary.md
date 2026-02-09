@@ -167,7 +167,7 @@ export default function PageNamePage() {
 
 ### Step 1.6: Update tests
 
-- **Content unit test**: If the original had a unit test, update it to test the Content component with `setQueryData` (pre-seeded cache) instead of mocking `useQuery`. See `project-structure` guide 04-test-utilities, Rule 3.
+- **Content unit test**: If the original had a unit test, update it to test the Content component with `setQueryData` (pre-seeded cache) instead of mocking `useQuery`. Mount the `QueryClientProvider` manually with a pre-seeded `QueryClient` (see `project-structure` guide 04-test-utilities, Rule 3 — "Pre-seeding QueryClient cache"). If the builder has been extended to accept `.withQueryClient(queryClient)`, use that instead.
 - **Integration test**: If a `.spec.tsx` exists, it should still work — MSW handlers feed the Suspense query. Verify it passes.
 - **New test**: If no test exists for the Content component, create one using `setQueryData`.
 

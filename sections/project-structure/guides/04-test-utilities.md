@@ -140,7 +140,7 @@ render(<Providers><TestApp initialRoute="/services" /></Providers>);
 
 The builder collects provider configuration, then `build()` assembles them using `reduceRight` — first provider added becomes the outermost wrapper. Each `add*Provider` function pushes a React component into the providers array.
 
-Key: the `QueryClient` is created with `retry: false` for both queries and mutations — tests should fail fast, not retry.
+Key: `.withQueryClient()` creates a `new QueryClient` with `retry: false` for both queries and mutations — tests should fail fast, not retry.
 
 > **Reference implementation**:
 > `modules/backup-agent/src/test-utils/testWrapperBuilder.tsx`
@@ -148,9 +148,13 @@ Key: the `QueryClient` is created with `retry: false` for both queries and mutat
 
 #### Pre-seeding QueryClient cache with `setQueryData`
 
-For tests that need pre-populated cache (e.g., testing pages with dependent queries or validating page-level `select` functions), create the `QueryClient` externally and seed it before passing to the builder:
+For Content components using `useSuspenseQuery` (Shell + Content pattern), you need to pre-seed the cache so the component receives guaranteed data without a real API call.
+
+**Current limitation**: `.withQueryClient()` creates the QueryClient internally and doesn't accept an external one. Until the builder is extended (see evolution below), mount the `QueryClientProvider` manually:
 
 ```tsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
 });
@@ -161,14 +165,64 @@ queryClient.setQueryData(
   mockProductData,
 );
 
-// Use the seeded client in the wrapper
-const wrapper = await testWrapperBuilder()
-  .withQueryClient(queryClient) // pass the pre-seeded client
-  .withI18next()
-  .build();
+// Mount QueryClientProvider manually
+render(
+  <QueryClientProvider client={queryClient}>
+    <MyContent />
+  </QueryClientProvider>,
+);
 ```
 
 This verifies that `select` transforms run correctly on cached data during render.
+
+#### Evolution: extend the builder to accept an external QueryClient
+
+To support `setQueryData` via the builder, apply this change to `testWrapperProviders.tsx`:
+
+```diff
+-export const addQueryClientProvider = (providers: TestProvider[]) => {
+-  const queryClient = new QueryClient({
++export const addQueryClientProvider = (
++  providers: TestProvider[],
++  externalClient?: QueryClient,
++) => {
++  const queryClient = externalClient ?? new QueryClient({
+     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+   });
+```
+
+And in `testWrapperBuilder.tsx`:
+
+```diff
+-  withQueryClient: boolean;
++  withQueryClient: boolean;
++  queryClient?: QueryClient;
+
+-    withQueryClient: () => {
+-      config.withQueryClient = true;
+-      return builder;
++    withQueryClient: (queryClient?: QueryClient) => {
++      config.withQueryClient = true;
++      config.queryClient = queryClient;
++      return builder;
+
+-    if (config.withQueryClient) addQueryClientProvider(providers);
++    if (config.withQueryClient) addQueryClientProvider(providers, config.queryClient);
+```
+
+After this change, both patterns work:
+
+```tsx
+// Without pre-seeding — builder creates its own QueryClient
+const wrapper = await testWrapperBuilder().withQueryClient().build();
+
+// With pre-seeding — pass your own QueryClient
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+});
+queryClient.setQueryData(queryKey, mockData);
+const wrapper = await testWrapperBuilder().withQueryClient(queryClient).build();
+```
 
 ---
 
