@@ -29,7 +29,7 @@ export const useCreateProduct = ({
   return useMutation({
     mutationFn: (newProduct: CreateProductInput) => createProduct(newProduct),
     onSuccess: (...params) => {
-      queryClient.invalidateQueries({ queryKey: productQueries.all().queryKey });
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
       onSuccess?.(...params);
     },
     ...options,
@@ -67,7 +67,7 @@ function CreateProductForm() {
   const mutation = useMutation({
     mutationFn: createProduct,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: productQueries.all().queryKey });
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
       toast.success('Created!');
     },
   });
@@ -80,7 +80,7 @@ export const useCreateProduct = () => {
   return useMutation({
     mutationFn: createProduct,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: productQueries.all().queryKey });
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
       toast.success('Created!'); // UI logic locked in the hook
     },
   });
@@ -139,16 +139,11 @@ Use the query key hierarchy to invalidate only what's needed. Broader invalidati
 
 ```tsx
 // After creating a product — invalidate all product queries
-queryClient.invalidateQueries({ queryKey: productQueries.all().queryKey });
+queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
 // → refetches: product lists, product details, product searches
 
-// After updating a specific product — invalidate that detail + lists
-queryClient.invalidateQueries({ queryKey: productQueries.all().queryKey });
-// Or more targeted:
-queryClient.invalidateQueries({
-  queryKey: productQueries.detail(updatedId).queryKey,
-});
-queryClient.invalidateQueries({ queryKey: ['products', 'list'] });
+// After updating a specific product — invalidate all (simple, safe)
+queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
 ```
 
 #### Incorrect
@@ -249,7 +244,7 @@ export const useUpdateProduct = ({
     onSettled: (...params) => {
       // Only invalidate when this is the LAST pending mutation
       if (queryClient.isMutating({ mutationKey: ['products', 'update'] }) === 1) {
-        queryClient.invalidateQueries({ queryKey: productQueries.all().queryKey });
+        queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
       }
       onSettled?.(...params);
     },
@@ -266,7 +261,7 @@ export const useUpdateProduct = ({
 const mutation = useMutation({
   mutationFn: updateProduct,
   onSettled: () => {
-    queryClient.invalidateQueries({ queryKey: productQueries.all().queryKey });
+    queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
     // If 3 mutations are pending, this triggers 3 refetches — wasteful
   },
 });

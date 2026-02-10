@@ -43,8 +43,8 @@ onSuccess: (updatedProduct) => {
     productQueries.detail(updatedProduct.id).queryKey,
     updatedProduct,
   );
-  // Still invalidate lists — they may need re-sorting
-  queryClient.invalidateQueries({ queryKey: ['products', 'list'] });
+  // Still invalidate everything — lists may need re-sorting
+  queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
 },
 ```
 

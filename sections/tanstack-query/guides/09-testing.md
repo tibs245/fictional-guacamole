@@ -32,7 +32,7 @@ import { mockProducts } from '@/mocks/products';
 
 describe('productQueries.list select', () => {
   it('filters products by category', () => {
-    const options = productQueries.listByCategory('electronics');
+    const options = productQueries.list({ category: 'electronics' });
     const result = options.select(mockProducts);
 
     expect(result).toEqual(
@@ -88,7 +88,7 @@ describe('DashboardPage', () => {
 
     // Seed each query independently — order doesn't matter
     queryClient.setQueryData(userQueries.detail('user-1').queryKey, mockUser);
-    queryClient.setQueryData(orderQueries.byUser('org-1').queryKey, mockOrders);
+    queryClient.setQueryData(orderQueries.detail('org-1').queryKey, mockOrders);
     queryClient.setQueryData(notificationQueries.all().queryKey, mockNotifications);
 
     render(

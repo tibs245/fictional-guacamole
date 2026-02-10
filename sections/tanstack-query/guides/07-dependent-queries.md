@@ -32,7 +32,7 @@ function useUserOrdersOptions({ userId }: { userId: string }) {
   const { data: user } = useQuery(userQueries.detail(userId));
 
   return queryOptions({
-    ...orderQueries.byUser(user?.organizationId!),
+    ...orderQueries.detail(user?.organizationId!),
     enabled: !!user?.organizationId, // ❌ dependency on another query
   });
 }
@@ -142,7 +142,7 @@ function UserOrders({ userId }: { userId: string }) {
 
   // Second render: suspends here until orders are loaded
   const { data: orders } = useSuspenseQuery(
-    orderQueries.byUser(user.organizationId),
+    orderQueries.detail(user.organizationId),
   );
 
   // Both are guaranteed defined
@@ -162,7 +162,7 @@ Note: This creates a waterfall (user fetched, then orders fetched). If you need 
   ```tsx
   // In a route loader or parent component
   const user = await queryClient.ensureQueryData(userQueries.detail(userId));
-  await queryClient.prefetchQuery(orderQueries.byUser(user.organizationId));
+  await queryClient.prefetchQuery(orderQueries.detail(user.organizationId));
   ```
 
 ---
