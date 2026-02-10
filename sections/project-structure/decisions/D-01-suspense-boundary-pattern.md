@@ -200,3 +200,12 @@ Applying the Shell + Content split only to pages would still leave components po
 ### Migration
 - Not a big-bang migration. New pages/components adopt the pattern. Existing ones are migrated when touched.
 - The Shell file is small (~15-20 lines) and formulaic.
+
+## Related decisions
+
+- [D-02 — Component SRP Split](./D-02-component-srp-split.md): Extends this pattern to 4 files (Shell / Content / Loading / Error) when loading or error fallbacks have non-trivial logic.
+
+## History
+
+- 2025-02-10: Added cross-reference to D-02 (4-file SRP split).
+- 2025-02-09: Created — adopted the Shell + Content Suspense boundary pattern.

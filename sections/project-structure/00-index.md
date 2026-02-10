@@ -10,6 +10,7 @@
 | [02-components-and-hooks](./guides/02-components-and-hooks.md) | Create a component or hook — page-specific vs reusable |
 | [03-testing-strategy](./guides/03-testing-strategy.md) | Know what to test, where to put tests, and how |
 | [04-test-utilities](./guides/04-test-utilities.md) | Set up test-utils: wrapper builder, centralized mocks, MSW |
+| [05-component-srp](./guides/05-component-srp.md) | Split a complex component into Shell / Content / Loading / Error |
 
 ## Routing table
 
@@ -49,6 +50,15 @@
 
 "I need to refactor a module to use Suspense boundaries"
   → Agent: refactor-suspense-boundary
+
+"I need to split a complex component into Shell/Content/Loading/Error"
+  → 05-component-srp
+
+"My component has complex loading or error states"
+  → 05-component-srp
+
+"Should I use 1, 2, or 4 files for my component?"
+  → 05-component-srp (Rule 1 — decision criteria)
 ```
 
 ## Agents
@@ -62,6 +72,7 @@
 | File | Topic |
 |------|-------|
 | [D-01-suspense-boundary-pattern](./decisions/D-01-suspense-boundary-pattern.md) | Shell + Content split with Suspense and ErrorBoundary |
+| [D-02-component-srp-split](./decisions/D-02-component-srp-split.md) | 4-file SRP split for complex data-dependent components |
 
 ## Dependencies between guides
 
@@ -70,4 +81,5 @@
 02-components-and-hooks ← requires 01
 03-testing-strategy     ← requires 01, 02
 04-test-utilities       ← requires 03 (auto-attached on *.test.* / *.spec.*)
+05-component-srp       ← requires 01 (Rule 7)
 ```
