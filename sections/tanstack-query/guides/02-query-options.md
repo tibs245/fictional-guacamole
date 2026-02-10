@@ -166,7 +166,7 @@ const detail = (id: string) =>
 const withClient = (queryClient: QueryClient) => ({
   getFirst: () =>
     queryOptions({
-      queryKey: [...queryKeys.products.all, 'first'] as const,
+      queryKey: [...queryKeys.products.all, 'first'],
       queryFn: async () => {
         const [firstProduct] = await queryClient.ensureQueryData(all());
         return firstProduct;
@@ -191,7 +191,7 @@ function FeaturedProduct() {
 }
 
 // Outside components — base methods work without queryClient
-queryClient.invalidateQueries({ queryKey: productQueries.all().queryKey });
+queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
 queryClient.prefetchQuery(productQueries.detail(id));
 ```
 

@@ -81,3 +81,5 @@ The `decisions/` folder contains Architecture Decision Records (ADRs) explaining
 | [D-09](./decisions/D-09-optimistic-updates-when.md) | When optimistic updates are worth it | 08-mutations |
 | [D-10](./decisions/D-10-staletime-strategy.md) | staleTime default and cache strategy | 09-query-client-setup |
 | [D-11](./decisions/D-11-error-handling-strategy.md) | Error handling — Boundaries vs local vs global | 09-query-client-setup |
+| [D-12](./decisions/D-12-as-const-simplification.md) | `as const` on outer object only (not per-line) | 01-query-keys |
+| [D-13](./decisions/D-13-query-key-naming-conventions.md) | Standardized query key naming (`all`, `list`, `detail`) | 01-query-keys |

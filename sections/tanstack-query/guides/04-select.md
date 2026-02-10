@@ -142,7 +142,7 @@ If EVERY consumer of a query needs the same transformation (e.g., normalizing AP
 export const productQueries = {
   list: (filters: ProductFilters) =>
     queryOptions({
-      queryKey: ['products', 'list', filters],
+      queryKey: queryKeys.products.list(filters),
       queryFn: async () => {
         const response = await fetchProducts(filters);
         // Universal normalization — all consumers need this shape

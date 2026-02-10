@@ -15,7 +15,7 @@ Query keys need to be consistent and accessible for both query definitions and c
 
 - **Global visibility**: One file shows ALL cache keys in the project. You can immediately see every domain entity, every scope, and spot naming conflicts or overlaps.
 - **Separation of concerns**: Keys define the cache STRUCTURE (what is cached and how it's organized). QueryFn defines the cache BEHAVIOR (how data is fetched). These are different responsibilities.
-- **Self-referencing hierarchy**: The `queryKeys` object can reference itself (`queryKeys.products.all` inside `queryKeys.products.lists()`), creating a true hierarchical tree where each level builds on the parent. This guarantees structural consistency. An object literal defining queryOptions cannot reference its own properties during construction.
+- **Self-referencing hierarchy**: The `queryKeys` object can reference itself (`queryKeys.products.all` inside `queryKeys.products.list()`), creating a true hierarchical tree where each level builds on the root. This guarantees structural consistency. An object literal defining queryOptions cannot reference its own properties during construction.
 - **Invalidation without queryOptions**: When invalidating after a mutation, you only need the key — not the queryFn. Importing `queryKeys.products.all` is lighter and clearer than importing the full queryOptions factory just to access `.queryKey`.
 - **Established convention**: The pattern from TkDodo's "Effective React Query Keys" article is widely adopted and proven at scale.
 
@@ -38,8 +38,14 @@ Query keys need to be consistent and accessible for both query definitions and c
 The self-referencing hierarchy is the deciding factor. Each level spreads from its parent:
 
 ```tsx
-lists: () => [...queryKeys.products.all, 'list'] as const,
-list: (filters) => [...queryKeys.products.lists(), { filters }] as const,
+// as const only on the outer object — not on each line
+export const queryKeys = {
+  products: {
+    all: ['products'],
+    list: (filters) => [...queryKeys.products.all, 'list', { filters }],
+    detail: (id) => [...queryKeys.products.all, 'detail', id],
+  },
+} as const;
 ```
 
 This pattern is impossible with co-located keys inside an object literal (the object cannot reference itself during construction). While standalone functions assembled into a factory can solve the self-reference problem, it sacrifices the global visibility that a single centralized file provides.
@@ -54,3 +60,4 @@ The drift risk is acceptable because TypeScript catches mismatches at compile ti
 ## History
 
 - 2026-02-06: Created — adopted centralized pattern over co-located
+- 2026-02-10: Updated `as const` examples — single `as const` on the outer object only (see D-12)
